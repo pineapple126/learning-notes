@@ -1,6 +1,6 @@
-# webpack 学习
+# webpack 基础概念知识
 
-- [webpack 学习](#webpack-学习)
+- [webpack 基础概念知识](#webpack-基础概念知识)
   - [概念](#概念)
   - [entry](#entry)
   - [output](#output)
@@ -8,6 +8,10 @@
   - [plugins](#plugins)
   - [配置（Configuration）](#配置configuration)
   - [模块（Modules）](#模块modules)
+  - [依赖图（dependency graph）](#依赖图dependency-graph)
+  - [target](#target)
+  - [manifest](#manifest)
+  - [模块热替换（hot module replacement)](#模块热替换hot-module-replacement)
 
 ## 概念
 
@@ -218,3 +222,73 @@ webpack 默认支持一下模块类型：
 - WebAssembly 模块
 
 通过 loader 可以使 webpack 支持多种语言和预处理器语法编写的模块。
+
+## 依赖图（dependency graph）
+
+当一个文件依赖另一个文件时，webpack 会将文件视为直接存在**依赖关系**。这使 webpack 可以获取非代码资源（如 images 或 web 字体等）。并会把他们作为**依赖**提供给应用程序。
+
+当 webpack 处理应用程序时，会根据命令行参数或配置文件中定义的模块列表开始处理。从 entry 开始，递归地构建一个包含所有需要模块的**依赖关系图**，然后将所有模块打包成一个可由浏览器加载的 bundle。
+
+## target
+
+target 选项可以使 webpack 编译不同环境的代码，默认值为 `'web'`。使用方法如下：
+
+```javascript
+// webpack.config.js
+
+module.exports = {
+  target: 'node'
+};
+```
+
+在实例中，target 选项的值为 `'node'`，webpack 将在类 Node.js 环境下编译代码。（使用 `require` 加载 chunk，而不加载任何内置模块）
+
+webpack 仅允许单个字符串作为 target 选项的值，如果需要配置多个环境，则可以通过设置多个独立配置，来构建 library：
+
+```javascript
+// webpack.config.js
+
+const path = require('path');
+
+const serverConfig = {
+  target: 'node',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'lib.node.js'
+  },
+  // ...
+};
+
+const clientConfig = {
+  target: 'web', // 默认为 'web'，可省略
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'lib.js'
+  },
+  // ...
+};
+
+module.exports = [serverConfig, clientConfig];
+```
+
+在上例中，将会在 `dist` 文件夹下创建 `lib.js` 和 `lib.node.js` 文件。
+
+## manifest
+
+在使用 webpack 构建的应用程序或站点中，一般具有三种类型的代码：
+
+- 我们和团队成员编写的源码
+- 项目中依赖的任何第三方的 library 或 vendor 代码
+- webpack 的 runtime 和 manifest（管理所有模块的交互）
+
+runtime 以及伴随的 manifest 数据主要是指：在浏览器运行过程中，webpack 用来连接模块化应用所需要的所有代码。一般包含：在模块交互时，连接模块所需的加载和解析逻辑（已经加载到浏览器中的连接模块逻辑和尚未加载模块的延迟加载逻辑）。
+
+当 compiler 开始执行、解析和映射应用程序的时候，他会保留所有模块的详细要点。这个数据集合称为 manifest，当完成打包并发送到浏览器时，runtime 会通过 manifest 来解析和加载模块。所有的导入语句都会被转换为 `__webpack_require__` 方法，该方法指向模块标识符(module identifier)。通过使用 manifest 中的数据，runtime 将能够检索这些标识符，找出每个标识符背后对应的模块。
+
+## 模块热替换（hot module replacement)
+
+模块热替换(HMR - hot module replacement)功能会在应用程序运行过程中，替换、添加或删除模块，而无需重新加载整个页面。主要是通过以下几种方式，来显著加快开发速度：
+
+- 保留在完全重新加载页面期间丢失的应用程序状态
+- 只更新变更内容，以节省宝贵的开发时间
+- 在源代码中 JS/CSS 产生修改时，会立刻在浏览器中进行更新，这几乎相当于在浏览器 devtools 直接更改样式
